@@ -2,7 +2,7 @@
 
 namespace Busuu\IosReceiptsApi\Model;
 
-class AppStoreReceipt
+class AppStoreReceipt implements ReceiptInterface
 {
     private $quantity;
     private $productId;
@@ -22,8 +22,10 @@ class AppStoreReceipt
     private $promotionalOfferId;
 
     /**
-     * @var int The cancellation date is set when Apple's customer service refunds the user purchase. In that case, consider that the purchase never happened.
-     * There is no way to know if and when the user requested that their subscription should not renew at the end of the term, except from checking the expiration time afterwards.
+     * @var int The cancellation date is set when Apple's customer service refunds the user purchase.
+     * In that case, consider that the purchase never happened.
+     * There is no way to know if and when the user requested that their subscription should not renew
+     * at the end of the term, except from checking the expiration time afterwards.
      */
     private $cancellationDateMs;
 

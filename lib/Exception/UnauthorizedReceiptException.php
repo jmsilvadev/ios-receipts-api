@@ -2,4 +2,6 @@
 
 namespace Busuu\IosReceiptsApi\Exception;
 
-class UnauthorizedReceiptException extends InvalidReceiptException {}
+class UnauthorizedReceiptException extends InvalidReceiptException
+{
+}

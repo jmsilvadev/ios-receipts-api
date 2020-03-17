@@ -17,10 +17,12 @@ class ValidatorService
      * Error returned by apple to indicates that the receipt is a sandbox receipt. This is happening when
      * apple is testing the app and is calling to our backend in production mode with a sandbox receipt-data
      *
-     * This receipt is from the test environment, but it was sent to the production environment for verification. Send it to the test environment instead.
+     * This receipt is from the test environment, but it was sent to the production environment for verification.
+     * Send it to the test environment instead.
      */
     const SANDBOX_ENVIRONMENT_ERROR_CODE = 21007;
-    // This receipt is from the production environment, but it was sent to the test environment for verification. Send it to the production environment instead.
+    // This receipt is from the production environment, but it was sent to the test environment for verification.
+    // Send it to the production environment instead.
     const PRODUCTION_ENVIRONMENT_ERROR_CODE = 21008;
     // The App Store could not read the JSON object you provided.
     const INVALID_REQUEST_JSON_ERROR_CODE = 21000;
@@ -43,7 +45,8 @@ class ValidatorService
      */
     const RECEIPT_SERVER_UNKOWN_ERROR_CODE = 21009;
     /*
-     * This receipt is valid but the subscription has expired. When this status code is returned to your server, the receipt data is also decoded and returned as part of the response.
+     * This receipt is valid but the subscription has expired. When this status code is returned to your server,
+     * the receipt data is also decoded and returned as part of the response.
      * Only returned for iOS 6 style transaction receipts for auto-renewable subscriptions.
      */
     const EXPIRED_SUBSCRIPTION_CODE = 21006;
@@ -76,41 +79,74 @@ class ValidatorService
             throw new InvalidReceiptException('The receipt sent by Apple is incorrect');
         }
 
-        switch ($receiptInfo['status']) {
-            case self::SANDBOX_ENVIRONMENT_ERROR_CODE:
-                $return = self::SANDBOX_REQUEST_RESPONSE;
-                break;
-            case self::PRODUCTION_ENVIRONMENT_ERROR_CODE:
-                $return = self::PRODUCTION_REQUEST_RESPONSE;
-                break;
-            case self::EXPIRED_SUBSCRIPTION_CODE:
-            case self::SUCCESS_RECEIPT_CODE:
-                $return = self::SUCCESS_VALIDATION_RESPONSE;
-                break;
-            case self::UNAUTHORIZED_RECEIPT:
-                throw new UnauthorizedReceiptException('This receipt could not be authorized. Treat this the same as if a purchase was never made.', $receiptInfo['status']);
-                break;
-            case self::INVALID_REQUEST_JSON_ERROR_CODE:
-                throw new InvalidReceiptException('The App Store could not read the JSON object you provided.', $receiptInfo['status']);
-                break;
-            case self::MALFORMED_RECEIPT_DATA_ERROR_CODE:
-                throw new InvalidReceiptException('The data in the receipt-data property was malformed or missing.', $receiptInfo['status']);
-                break;
-            case self::RECEIPT_NOT_AUTHENTICATE_ERROR_CODE:
-                throw new InvalidReceiptException('The receipt could not be authenticated.', $receiptInfo['status']);
-                break;
-            case self::INVALID_CREDENTIALS_ERROR_CODE:
-                throw new InvalidReceiptException('The shared secret you provided does not match the shared secret on file for your account.', $receiptInfo['status']);
-                break;
-            case self::RECEIPT_SERVER_DOWN_ERROR_CODE:
-            case self::RECEIPT_SERVER_UNKOWN_ERROR_CODE:
-                throw new InvalidReceiptException('The receipt server is not currently available.', $receiptInfo['status']);
-                break;
-            default:
-                throw new InvalidReceiptException('The receipt does not contain a valid status.', $receiptInfo['status']);
-                break;
+        return $this->getResponse($receiptInfo['status']);
+    }
+
+    /**
+     * Get the response of requests
+     * @param $status
+     * @return integer
+     * @throws Exception
+     */
+    private function getResponse($status)
+    {
+        $reponses = [
+            self::SANDBOX_ENVIRONMENT_ERROR_CODE => self::SANDBOX_REQUEST_RESPONSE,
+            self::PRODUCTION_ENVIRONMENT_ERROR_CODE => self::PRODUCTION_REQUEST_RESPONSE,
+            self::EXPIRED_SUBSCRIPTION_CODE => self::SUCCESS_VALIDATION_RESPONSE,
+            self::SUCCESS_RECEIPT_CODE => self::SUCCESS_VALIDATION_RESPONSE,
+        ];
+
+        if (!array_key_exists($status, $reponses)) {
+            $this->sendThrow($status);
         }
 
-        return $return;
+        return $reponses[$status];
+    }
+
+    /**
+     * Send a throw
+     * @param $status
+     * @throws Exception
+     */
+    private function sendThrow($status)
+    {
+
+        $throws = [
+            self::UNAUTHORIZED_RECEIPT => [
+                'Busuu\IosReceiptsApi\Exception\UnauthorizedReceiptException',
+                'This receipt could not be authorized. Treat this the same as if a purchase was never made.',
+            ],
+            self::INVALID_REQUEST_JSON_ERROR_CODE => [
+                'Busuu\IosReceiptsApi\Exception\InvalidReceiptException',
+                'The App Store could not read the JSON object you provided.',
+            ],
+            self::MALFORMED_RECEIPT_DATA_ERROR_CODE => [
+                'Busuu\IosReceiptsApi\Exception\InvalidReceiptException',
+                'The data in the receipt-data property was malformed or missing.',
+            ],
+            self::RECEIPT_NOT_AUTHENTICATE_ERROR_CODE => [
+                'Busuu\IosReceiptsApi\Exception\InvalidReceiptException',
+                'The receipt could not be authenticated.',
+            ],
+            self::INVALID_CREDENTIALS_ERROR_CODE => [
+                'Busuu\IosReceiptsApi\Exception\InvalidReceiptException',
+                'The shared secret you provided does not match the shared secret on file for your account.',
+            ],
+            self::RECEIPT_SERVER_DOWN_ERROR_CODE => [
+                'Busuu\IosReceiptsApi\Exception\InvalidReceiptException',
+                'The receipt server is not currently available.',
+            ],
+            self::RECEIPT_SERVER_UNKOWN_ERROR_CODE => [
+                'Busuu\IosReceiptsApi\Exception\InvalidReceiptException',
+                'The receipt server is not currently available.',
+            ],
+        ];
+
+        if (array_key_exists($status, $throws)) {
+            throw new $throws[$status][0]($throws[$status][1], $status);
+        }
+        
+        throw new InvalidReceiptException('The receipt does not contain a valid status.', $status);
     }
 }
